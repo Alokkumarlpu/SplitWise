@@ -42,6 +42,13 @@ Build a simplified Splitwise-style web application that allows users to:
   * Record cash/external payments to update balances.
 * **Expense Chat**:
   * Real-time messaging per expense via WebSockets.
+* **Fairness Calculators**:
+  * Interactive calculators to compute custom/weighted splits.
+  * Supported: Rent Split (room size weights), Travel Split (equal shares).
+  * History logging for authenticated users.
+* **Support Ticketing**:
+  * Submit issues/tickets from a dedicated page.
+  * Guest support (enforces name/email validation) & authenticated user tracking.
 
 ### Out of Scope
 * ❌ Recurring expenses
@@ -147,6 +154,21 @@ Build a simplified Splitwise-style web application that allows users to:
   * `POST /api/settlements/` - Record a settlement
 * **Balances**:
   * `GET /api/balances/` - Retrieve overall balance summary (net owe/owed) for the user
+* **Calculators**:
+  * `GET /api/calculators/` - List user calculation logs (requires authentication)
+  * `POST /api/calculators/rent/` - Proportional rent splitting with room weights (anonymous allowed)
+  * `POST /api/calculators/travel/` - Equal travel splitting (anonymous allowed)
+* **Support**:
+  * `POST /api/support/` - Submit support ticket (anonymous allowed, enforces name/email validations for guests)
+* **Dashboard**:
+  * `GET /api/dashboard/` - Retrieve consolidated groups, friendships, dynamic balance totals, and activity feed for current user
+* **Friends**:
+  * `GET /api/friends/` - Retrieve user friendships (with calculated friend-specific balances across shared groups)
+  * `POST /api/friends/` - Add friend by lookup identifier (creates reciprocal friendships)
+  * `DELETE /api/friends/<id>/` - Unfriend user (deletes reciprocal friendship records)
+  * `POST /api/friends/invite/` - Log a FriendInvite email invitation
+* **Activity**:
+  * `GET /api/activity/` - Retrieve recent activity logs stream involving the user
 
 ### Real-Time Chat WebSocket
 * `ws://<backend-domain>/ws/chat/expense/<expense_id>/`
@@ -165,9 +187,41 @@ Build a simplified Splitwise-style web application that allows users to:
 * `/expenses/:id` - Expense details showing description, payer, splits, and the chat section
 * `/groups/:id/settle` - Settle up page to record a payment between group members
 * `/settings` - Account Settings screen showing profile, notification toggles, active sessions, and data controls
+* `/account` - Alias / redirect to `/settings`
+* `/groups/create` - Create group page with searchable member invitations
+* `/calculators` - Hub for Fairness Calculators and history tracking
+* `/calculators/rent` - Rent Split Calculator with room weights inputs
+* `/calculators/travel` - Travel Split Calculator
+* `/support` - Submit a support ticket page
+* `/friends` - Friends management page (shared expenses list, relationship balance summary, and add/remove friend controls)
+* `/logout` - Resets AuthContext session state and redirects to login
 
 ---
 
 ## 7. Testing Strategy
-* **Manual QA**: Verifying complete user flows: Registration -> Group Creation -> Add Members -> Create Expense (each split type) -> Debt Simplification -> Settlement -> Expense Chat.
-* **Unit Testing**: Unit tests for the balance calculation and split validation engines.
+* **Manual QA**: Verifying complete user flows: Registration -> Group Creation -> Add Members -> Create Expense (each split type) -> Debt Simplification -> Settlement -> Expense Chat -> Friendships and Invites -> Dashboard grid modals.
+* **Unit Testing**: Unit tests for split math, debt simplification, Settings module, Calculators split logs, Support tickets, Friendship reciprocal structures, and Activity feed triggers.
+
+---
+
+## 8. Dashboard & Friends Subsystem Architecture
+
+### Dynamic Stats Computation
+To prevent database synchronization drift, all dashboard stats (Total Owe, Total Owed, Net Balance, and shared friend balances) are calculated dynamically on-the-fly when requested. The system inspects all groups the user participates in, runs the Greedy Debt-Simplification Algorithm on each, and sums the transactions that involve the requesting user.
+
+### Reciprocal Friendships
+Friendships are design-symmetrical. When User A adds User B as a friend, the system creates two separate `Friendship` rows (`A -> B` and `B -> A`) in a single database transaction. This enables simple `GET` filtering on the friends relation and provides quick access to individual relationship balances. Removing a friend deletes both rows reciprocally.
+
+### Event-Driven Activity Logging
+An inline trigger system logs actions to the `Activity` model whenever core state changes occur:
+* **Expenses**: Logs `expense_created`, `expense_updated`, and `expense_deleted` with description and amount details.
+* **Settlements**: Logs `settlement_made` with payer and payee usernames.
+* **Groups**: Logs `member_added` and `member_removed` when group memberships are updated.
+* **Chat**: Logs `chat_message` snippets.
+
+Activity lists are filtered dynamically: users only see logs they personally triggered or that belong to a group of which they are a member.
+
+### Tradeoffs & Limitations
+* **Scale Performance**: Dynamic recalculation of balances across large numbers of groups/transactions can cause latency. If group counts scale beyond hundreds, balances must be cached or pre-aggregated with triggers.
+* **Email Invites**: There is no SMTP email dispatch backend integrated. Friend invitations are stored locally in the `FriendInvite` table as audit records.
+

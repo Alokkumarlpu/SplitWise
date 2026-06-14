@@ -10,6 +10,13 @@ import AddExpense from './pages/AddExpense';
 import ExpenseDetails from './pages/ExpenseDetails';
 import SettleUp from './pages/SettleUp';
 import Settings from './pages/Settings';
+import Logout from './pages/Logout';
+import CreateGroup from './pages/CreateGroup';
+import Calculators from './pages/Calculators';
+import RentCalculator from './pages/RentCalculator';
+import TravelCalculator from './pages/TravelCalculator';
+import Support from './pages/Support';
+import Friends from './pages/Friends';
 
 function App() {
   return (
@@ -69,6 +76,31 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/account"
+            element={<Navigate to="/settings" replace />}
+          />
+          <Route
+            path="/groups/create"
+            element={
+              <ProtectedRoute>
+                <CreateGroup />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/calculators" element={<Calculators />} />
+          <Route path="/calculators/rent" element={<RentCalculator />} />
+          <Route path="/calculators/travel" element={<TravelCalculator />} />
+          <Route path="/support" element={<Support />} />
+          <Route
+            path="/friends"
+            element={
+              <ProtectedRoute>
+                <Friends />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/logout" element={<Logout />} />
 
           {/* Redirect index or any other routes to Dashboard */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

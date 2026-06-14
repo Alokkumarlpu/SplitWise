@@ -49,6 +49,10 @@ INSTALLED_APPS = [
     
     # Local apps
     'splitwise_api',
+    'calculators',
+    'support',
+    'friends',
+    'activity',
 ]
 
 MIDDLEWARE = [

@@ -37,7 +37,7 @@ A simplified, fully functioning Splitwise clone built in 3 days using React (Vit
    ```
 5. Run the targeted backend test suite:
    ```bash
-   python manage.py test splitwise_api
+   python manage.py test
    ```
 6. Start the local ASGI development server (Daphne handles both HTTP & WebSockets):
    ```bash

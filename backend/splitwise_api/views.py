@@ -51,6 +51,13 @@ class GroupViewSet(viewsets.ModelViewSet):
             return Response({"error": "User already in group"}, status=400)
 
         group.members.add(user_to_add)
+        from activity.models import Activity
+        Activity.objects.create(
+            type='member_added',
+            user=request.user,
+            group=group,
+            description=f"{request.user.username} added {user_to_add.username} to group {group.name}."
+        )
         return Response({"message": f"Successfully added {user_to_add.username} to group"}, status=200)
 
     @action(detail=True, methods=['post'], url_path='remove-member')
@@ -69,6 +76,13 @@ class GroupViewSet(viewsets.ModelViewSet):
             return Response({"error": "User is not in the group"}, status=400)
 
         group.members.remove(user_to_remove)
+        from activity.models import Activity
+        Activity.objects.create(
+            type='member_removed',
+            user=request.user,
+            group=group,
+            description=f"{request.user.username} removed {user_to_remove.username} from group {group.name}."
+        )
         return Response({"message": f"Successfully removed {user_to_remove.username} from group"}, status=200)
 
 class ExpenseViewSet(viewsets.ModelViewSet):
@@ -79,9 +93,43 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         # Filter expenses in groups the user belongs to
         return Expense.objects.filter(group__members=self.request.user).distinct().order_by('-created_at')
 
+    def perform_create(self, serializer):
+        expense = serializer.save()
+        from activity.models import Activity
+        Activity.objects.create(
+            type='expense_created',
+            user=self.request.user,
+            group=expense.group,
+            description=f"{self.request.user.username} created expense '{expense.description}' of ₹{expense.amount} in group {expense.group.name}."
+        )
+
+    def perform_update(self, serializer):
+        expense = serializer.save()
+        from activity.models import Activity
+        Activity.objects.create(
+            type='expense_updated',
+            user=self.request.user,
+            group=expense.group,
+            description=f"{self.request.user.username} updated expense '{expense.description}' in group {expense.group.name}."
+        )
+
     def destroy(self, request, *args, **kwargs):
         # Deleting expense automatically deletes ExpenseSplits due to cascade delete
-        return super().destroy(request, *args, **kwargs)
+        instance = self.get_object()
+        group = instance.group
+        desc = instance.description
+        amount = instance.amount
+        
+        response = super().destroy(request, *args, **kwargs)
+        
+        from activity.models import Activity
+        Activity.objects.create(
+            type='expense_deleted',
+            user=self.request.user,
+            group=group,
+            description=f"{self.request.user.username} deleted expense '{desc}' of ₹{amount} from group {group.name}."
+        )
+        return response
 
 class SettlementViewSet(viewsets.ModelViewSet):
     serializer_class = SettlementSerializer
@@ -90,6 +138,16 @@ class SettlementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Filter settlements in groups the user belongs to
         return Settlement.objects.filter(group__members=self.request.user).distinct().order_by('-created_at')
+
+    def perform_create(self, serializer):
+        settlement = serializer.save()
+        from activity.models import Activity
+        Activity.objects.create(
+            type='settlement_made',
+            user=self.request.user,
+            group=settlement.group,
+            description=f"{settlement.payer.username} paid {settlement.payee.username} ₹{settlement.amount} in group {settlement.group.name}."
+        )
 
 class ChatMessageListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -119,6 +177,13 @@ class ChatMessageListView(APIView):
             expense=expense,
             user=request.user,
             message=message_text
+        )
+        from activity.models import Activity
+        Activity.objects.create(
+            type='chat_message',
+            user=request.user,
+            group=expense.group,
+            description=f"{request.user.username} sent a message in '{expense.description}': '{message_text[:30]}...'"
         )
         serializer = ChatMessageSerializer(msg)
         return Response(serializer.data, status=201)
@@ -196,8 +261,10 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        from .serializers import UserSettingsSerializer
+        serializer = UserSettingsSerializer(request.user)
         return Response(serializer.data)
+
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import AccessToken
@@ -419,5 +486,63 @@ class LogoutAllView(APIView):
         # Terminate all active sessions for this user
         UserSession.objects.filter(user=request.user).delete()
         return Response({"message": "Successfully logged out from all devices."})
+
+
+class DashboardView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # 1. Groups listing
+        groups_qs = Group.objects.filter(members=user).order_by('-created_at')
+        groups_serializer = GroupSerializer(groups_qs, many=True)
+
+        # 2. Friends listing (from friends app)
+        from friends.models import Friendship
+        from friends.serializers import FriendshipSerializer
+        friends_qs = Friendship.objects.filter(user=user).order_by('-created_at')
+        friends_serializer = FriendshipSerializer(friends_qs, many=True, context={'request': request})
+
+        # 3. Dynamic Balance computation
+        total_owed = Decimal('0.00')
+        total_owe = Decimal('0.00')
+        total_expenses = Expense.objects.filter(group__members=user).distinct().count()
+
+        for group in groups_qs:
+            balances = calculate_group_balances(group)
+            user_balance = balances.get(user.id, Decimal('0.00'))
+            if user_balance > Decimal('0.00'):
+                total_owed += user_balance
+            elif user_balance < Decimal('0.00'):
+                total_owe += abs(user_balance)
+
+        # Recent settlements in user's groups
+        recent_settlements_qs = Settlement.objects.filter(group__members=user).distinct().order_by('-created_at')[:5]
+        recent_settlements_data = SettlementSerializer(recent_settlements_qs, many=True).data
+
+        balances_data = {
+            "total_owe": f"{total_owe:.2f}",
+            "total_owed": f"{total_owed:.2f}",
+            "net_balance": f"{(total_owed - total_owe):.2f}",
+            "total_groups": groups_qs.count(),
+            "total_expenses": total_expenses,
+            "recent_settlements": recent_settlements_data
+        }
+
+        # 4. Recent Activities (from activity app)
+        from activity.models import Activity
+        from activity.serializers import ActivitySerializer
+        activities_qs = Activity.objects.filter(
+            Q(user=user) | Q(group__members=user)
+        ).distinct().order_by('-created_at')[:20]
+        activities_serializer = ActivitySerializer(activities_qs, many=True)
+
+        return Response({
+            "groups": groups_serializer.data,
+            "friends": friends_serializer.data,
+            "balances": balances_data,
+            "activities": activities_serializer.data
+        })
 
 

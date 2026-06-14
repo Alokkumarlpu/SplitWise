@@ -102,7 +102,7 @@ def calculate_splits(total_amount, members_ids, split_type, splits_data):
         raise ValueError("Must have at least one member to split with.")
 
     result = {}
-    splits_map = {item['user_id']: Decimal(str(item['split_value'])) for item in splits_data}
+    splits_map = {item['user_id']: Decimal(str(item.get('split_value', 0) or 0)) for item in splits_data}
 
     if split_type == 'equal':
         n = Decimal(len(members_ids))

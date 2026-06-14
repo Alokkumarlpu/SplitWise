@@ -28,7 +28,7 @@ from splitwise_api.views import (
     ProfileSettingsView, AvatarUploadView, PreferencesSettingsView,
     ChangePasswordView, DeleteAccountView, NotificationSettingsView,
     PrivacySettingsView, BlockUserView, UnblockUserView,
-    TerminateSessionView, LogoutAllView
+    TerminateSessionView, LogoutAllView, DashboardView
 )
 
 router = DefaultRouter()
@@ -62,5 +62,11 @@ urlpatterns = [
     path('api/profile/privacy/block/', BlockUserView.as_view(), name='profile_block'),
     path('api/profile/privacy/unblock/', UnblockUserView.as_view(), name='profile_unblock'),
     path('api/profile/privacy/terminate-session/', TerminateSessionView.as_view(), name='profile_terminate_session'),
+    path('api/calculators/', include('calculators.urls')),
+    path('api/support/', include('support.urls')),
+    path('api/dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('api/friends/', include('friends.urls')),
+    path('api/activity/', include('activity.urls')),
 ]
+
 
