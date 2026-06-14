@@ -51,25 +51,28 @@ const Calculators = () => {
       id: 'insurance',
       title: 'Insurance Share',
       description: 'Split health or car insurance plans by premium weights.',
+      path: '/calculators/insurance',
       icon: ShieldAlert,
       iconColor: 'text-purple-600 bg-purple-50',
-      active: false,
+      active: true,
     },
     {
       id: 'furniture',
       title: 'Furniture Calculator',
       description: 'Split shared furniture costs by usage or eventual ownership.',
+      path: '/calculators/furniture',
       icon: Armchair,
       iconColor: 'text-indigo-600 bg-indigo-50',
-      active: false,
+      active: true,
     },
     {
       id: 'guest',
       title: 'Guest Split Calculator',
       description: 'Split utilities when guests visit for part of the month.',
+      path: '/calculators/guest',
       icon: HelpCircle,
       iconColor: 'text-teal-600 bg-teal-50',
-      active: false,
+      active: true,
     },
   ];
 
@@ -174,7 +177,10 @@ const Calculators = () => {
                     >
                       <div className="flex justify-between items-start">
                         <span className="text-xs font-bold uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          {log.calculator_type === 'rent' ? '🏠 Rent' : '✈️ Travel'}
+                          {log.calculator_type === 'rent' ? '🏠 Rent' :
+                           log.calculator_type === 'travel' ? '✈️ Travel' :
+                           log.calculator_type === 'insurance' ? '🛡️ Insurance' :
+                           log.calculator_type === 'furniture' ? '🛋️ Furniture' : '👥 Guest'}
                         </span>
                         <div className="flex items-center gap-1 text-[10px] text-gray-400">
                           <Clock className="h-3 w-3" />
@@ -182,11 +188,18 @@ const Calculators = () => {
                         </div>
                       </div>
                       <div className="text-xs text-gray-500">
-                        <span className="font-semibold text-gray-700">Rent amount: </span>
+                        <span className="font-semibold text-gray-700">
+                          {log.calculator_type === 'rent' ? 'Rent amount: ' :
+                           log.calculator_type === 'travel' ? 'Travel cost: ' :
+                           log.calculator_type === 'insurance' ? 'Premium amount: ' :
+                           log.calculator_type === 'furniture' ? 'Furniture cost: ' : 'Utility bill: '}
+                        </span>
                         <span>₹{parseFloat(log.input_data.total_amount).toFixed(2)}</span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        <span className="font-semibold text-gray-700">Roommates: </span>
+                        <span className="font-semibold text-gray-700">
+                          {log.calculator_type === 'rent' || log.calculator_type === 'furniture' || log.calculator_type === 'guest' ? 'Roommates: ' : 'Participants: '}
+                        </span>
                         <span>{log.input_data.participants}</span>
                       </div>
                       <div className="text-xs border-t border-gray-50 pt-1.5 mt-0.5 flex flex-wrap gap-1">

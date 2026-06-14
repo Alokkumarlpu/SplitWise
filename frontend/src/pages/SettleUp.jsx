@@ -39,11 +39,36 @@ const SettleUp = () => {
           setPayeeId(qPayee);
           setAmount(qAmount || '');
         } else {
-          // Default: payer is current logged-in user, payee is the first other member
+          // Prepopulate based on simplified debts
           const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-          setPayerId(currentUser.id || res.data.members[0]?.id || '');
-          const otherMember = res.data.members.find(m => m.id !== currentUser.id);
-          setPayeeId(otherMember?.id || res.data.members[1]?.id || '');
+          const debts = res.data.simplified_debts || [];
+          
+          // 1. Current user owes someone
+          const userOwes = debts.find(d => d.from_user_id === currentUser.id);
+          // 2. Someone owes current user
+          const userIsOwed = debts.find(d => d.to_user_id === currentUser.id);
+          // 3. Any other debt
+          const anyDebt = debts[0];
+
+          if (userOwes) {
+            setPayerId(userOwes.from_user_id.toString());
+            setPayeeId(userOwes.to_user_id.toString());
+            setAmount(userOwes.amount);
+          } else if (userIsOwed) {
+            setPayerId(userIsOwed.from_user_id.toString());
+            setPayeeId(userIsOwed.to_user_id.toString());
+            setAmount(userIsOwed.amount);
+          } else if (anyDebt) {
+            setPayerId(anyDebt.from_user_id.toString());
+            setPayeeId(anyDebt.to_user_id.toString());
+            setAmount(anyDebt.amount);
+          } else {
+            // Default: payer is current logged-in user, payee is the first other member
+            setPayerId(currentUser.id || res.data.members[0]?.id || '');
+            const otherMember = res.data.members.find(m => m.id !== currentUser.id);
+            setPayeeId(otherMember?.id || res.data.members[1]?.id || '');
+            setAmount('');
+          }
         }
 
       } catch (err) {

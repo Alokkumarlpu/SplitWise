@@ -44,14 +44,37 @@ const SettleUpModal = ({ isOpen, onClose, groups = [], onSuccess }) => {
         const res = await api.get(`/api/groups/${selectedGroupId}/`);
         setGroup(res.data);
 
-        // Prepopulate: Payer defaults to logged-in user if member, payee to first other member
+        // Prepopulate based on simplified debts
         const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        const isMember = res.data.members.some((m) => m.id === currentUser.id);
+        const debts = res.data.simplified_debts || [];
         
-        setPayerId(isMember ? currentUser.id.toString() : res.data.members[0]?.id?.toString() || '');
-        
-        const otherMembers = res.data.members.filter((m) => m.id !== (isMember ? currentUser.id : res.data.members[0]?.id));
-        setReceiverId(otherMembers[0]?.id?.toString() || res.data.members[0]?.id?.toString() || '');
+        // 1. Current user owes someone
+        const userOwes = debts.find(d => d.from_user_id === currentUser.id);
+        // 2. Someone owes current user
+        const userIsOwed = debts.find(d => d.to_user_id === currentUser.id);
+        // 3. Any other debt
+        const anyDebt = debts[0];
+
+        if (userOwes) {
+          setPayerId(userOwes.from_user_id.toString());
+          setReceiverId(userOwes.to_user_id.toString());
+          setAmount(userOwes.amount);
+        } else if (userIsOwed) {
+          setPayerId(userIsOwed.from_user_id.toString());
+          setReceiverId(userIsOwed.to_user_id.toString());
+          setAmount(userIsOwed.amount);
+        } else if (anyDebt) {
+          setPayerId(anyDebt.from_user_id.toString());
+          setReceiverId(anyDebt.to_user_id.toString());
+          setAmount(anyDebt.amount);
+        } else {
+          // Default fallback
+          const isMember = res.data.members.some((m) => m.id === currentUser.id);
+          setPayerId(isMember ? currentUser.id.toString() : res.data.members[0]?.id?.toString() || '');
+          const otherMembers = res.data.members.filter((m) => m.id !== (isMember ? currentUser.id : res.data.members[0]?.id));
+          setReceiverId(otherMembers[0]?.id?.toString() || res.data.members[0]?.id?.toString() || '');
+          setAmount('');
+        }
       } catch (err) {
         setError('Failed to fetch group members.');
       } finally {

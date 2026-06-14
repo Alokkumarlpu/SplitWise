@@ -21,7 +21,8 @@ import {
   UserPlus,
   Users,
   Search,
-  ShieldAlert
+  ShieldAlert,
+  Activity
 } from 'lucide-react';
 
 const Dashboard = () => {

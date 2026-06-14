@@ -15,8 +15,12 @@ import CreateGroup from './pages/CreateGroup';
 import Calculators from './pages/Calculators';
 import RentCalculator from './pages/RentCalculator';
 import TravelCalculator from './pages/TravelCalculator';
+import InsuranceCalculator from './pages/InsuranceCalculator';
+import FurnitureCalculator from './pages/FurnitureCalculator';
+import GuestCalculator from './pages/GuestCalculator';
 import Support from './pages/Support';
 import Friends from './pages/Friends';
+import Activity from './pages/Activity';
 
 function App() {
   return (
@@ -91,12 +95,23 @@ function App() {
           <Route path="/calculators" element={<Calculators />} />
           <Route path="/calculators/rent" element={<RentCalculator />} />
           <Route path="/calculators/travel" element={<TravelCalculator />} />
+          <Route path="/calculators/insurance" element={<InsuranceCalculator />} />
+          <Route path="/calculators/furniture" element={<FurnitureCalculator />} />
+          <Route path="/calculators/guest" element={<GuestCalculator />} />
           <Route path="/support" element={<Support />} />
           <Route
             path="/friends"
             element={
               <ProtectedRoute>
                 <Friends />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/activity"
+            element={
+              <ProtectedRoute>
+                <Activity />
               </ProtectedRoute>
             }
           />

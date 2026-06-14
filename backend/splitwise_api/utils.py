@@ -18,8 +18,8 @@ def calculate_group_balances(group):
     # Add settlements
     for settlement in group.settlements.all():
         # payer paid payee
-        net_balances[settlement.payer.id] -= settlement.amount
-        net_balances[settlement.payee.id] += settlement.amount
+        net_balances[settlement.payer.id] += settlement.amount
+        net_balances[settlement.payee.id] -= settlement.amount
 
     return net_balances
 
