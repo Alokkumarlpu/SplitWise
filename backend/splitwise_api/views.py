@@ -15,6 +15,7 @@ from .utils import calculate_group_balances, simplify_debts
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -275,6 +276,8 @@ from .serializers import (
 )
 
 class CustomTokenObtainPairView(TokenObtainPairView):
+    authentication_classes = []
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
