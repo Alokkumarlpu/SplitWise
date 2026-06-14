@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from decimal import Decimal
-from .models import Group, Expense, ExpenseSplit, Settlement, ChatMessage
+from .models import (
+    Group, Expense, ExpenseSplit, Settlement, ChatMessage,
+    UserProfile, NotificationPreference, PrivacySettings, UserSession, BlockedUser
+)
 from .utils import calculate_splits, calculate_group_balances, simplify_debts
 
 class UserSerializer(serializers.ModelSerializer):
@@ -169,3 +172,67 @@ class GroupSerializer(serializers.ModelSerializer):
             }
             for tx in simplified
         ]
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ('id', 'full_name', 'phone_number', 'avatar_base64', 'default_currency', 'timezone', 'language')
+
+class UserSettingsSerializer(serializers.ModelSerializer):
+    profile = UserProfileSerializer(read_only=True)
+    full_name = serializers.CharField(source='profile.full_name', allow_blank=True, required=False)
+    phone_number = serializers.CharField(source='profile.phone_number', allow_blank=True, required=False)
+    
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'full_name', 'phone_number', 'profile')
+        read_only_fields = ('id', 'username', 'profile')
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', {})
+        
+        instance.email = validated_data.get('email', instance.email)
+        instance.save()
+
+        profile = instance.profile
+        profile.full_name = profile_data.get('full_name', profile.full_name)
+        profile.phone_number = profile_data.get('phone_number', profile.phone_number)
+        profile.save()
+
+        return instance
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationPreference
+        exclude = ('user',)
+
+class PrivacySettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrivacySettings
+        fields = ('discoverable',)
+
+class UserSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSession
+        fields = ('id', 'ip_address', 'user_agent', 'created_at', 'last_activity')
+
+class BlockedUserSerializer(serializers.ModelSerializer):
+    blocked_user = GroupMemberSerializer(read_only=True)
+    blocked_user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), source='blocked_user', write_only=True
+    )
+
+    class Meta:
+        model = BlockedUser
+        fields = ('id', 'blocked_user', 'blocked_user_id', 'created_at')
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+

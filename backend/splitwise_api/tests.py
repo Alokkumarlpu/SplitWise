@@ -155,3 +155,77 @@ class DebtSimplificationTests(TestCase):
         self.assertEqual(txs[1]['from_user_id'], self.user_c.id)
         self.assertEqual(txs[1]['to_user_id'], self.user_b.id)
         self.assertEqual(txs[1]['amount'], Decimal('150.00'))
+
+from django.urls import reverse
+from rest_framework.test import APITestCase
+from splitwise_api.models import UserSession
+
+class SettingsModuleTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='tester', email='tester@test.com', password='password123')
+        
+    def test_password_change(self):
+        self.client.force_authenticate(user=self.user)
+        
+        # Change password successfully
+        url = reverse('profile_change_password')
+        response = self.client.post(url, {
+            'old_password': 'password123',
+            'new_password': 'newpassword456'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('newpassword456'))
+
+        # Change with incorrect old password
+        response = self.client.post(url, {
+            'old_password': 'wrongpassword',
+            'new_password': 'newerpassword789'
+        })
+        self.assertEqual(response.status_code, 400)
+
+    def test_session_management_and_revocation(self):
+        # Obtain JWT
+        login_url = reverse('token_obtain_pair')
+        login_res = self.client.post(login_url, {
+            'username': 'tester',
+            'password': 'password123'
+        })
+        self.assertEqual(login_res.status_code, 200)
+        access_token = login_res.data['access']
+
+        # Confirm session was logged in database
+        self.assertEqual(UserSession.objects.filter(user=self.user).count(), 1)
+        session = UserSession.objects.filter(user=self.user).first()
+        
+        # Test authenticating with the token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access_token}')
+        profile_url = reverse('profile_settings')
+        profile_res = self.client.get(profile_url)
+        self.assertEqual(profile_res.status_code, 200)
+
+        # Invalidate the session (e.g. simulate terminate session / logout-all)
+        session.delete()
+
+        # Attempt to access profile settings again
+        profile_res_revoked = self.client.get(profile_url)
+        self.assertEqual(profile_res_revoked.status_code, 401)
+
+    def test_account_deactivation_soft_delete(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('profile_delete_account')
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, 200)
+        
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+
+        # Login must fail for deactivated user
+        self.client.logout()
+        login_url = reverse('token_obtain_pair')
+        login_res = self.client.post(login_url, {
+            'username': 'tester',
+            'password': 'password123'
+        })
+        self.assertEqual(login_res.status_code, 401)
+

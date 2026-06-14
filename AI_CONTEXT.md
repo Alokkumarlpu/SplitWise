@@ -112,11 +112,26 @@ Build a simplified Splitwise-style web application that allows users to:
 ### API Endpoints
 * **Auth**:
   * `POST /api/auth/register/` - Register a new user
-  * `POST /api/auth/login/` - Login and receive JWT
+  * `POST /api/auth/login/` - Login, log session details, and receive JWT
   * `POST /api/auth/token/refresh/` - Refresh JWT access token
+  * `POST /api/auth/logout-all/` - Clear all session tokens for the user
 * **Users**:
   * `GET /api/users/me/` - Retrieve authenticated user's details (ID, username, email)
   * `GET /api/users/?search=<query>` - Autocomplete user lookup for invites (requires minimum 2 characters query)
+* **Profile & Settings**:
+  * `GET /api/profile/` - Retrieve profile updates and preferences
+  * `PUT /api/profile/` - Edit full name, email, phone number
+  * `POST /api/profile/avatar/` - Upload Base64-encoded avatar string
+  * `PUT /api/profile/preferences/` - Edit default currency, timezone, language
+  * `POST /api/profile/change-password/` - Verify current password and update to new password
+  * `DELETE /api/profile/delete-account/` - Soft-deactivate user account
+  * `GET /api/profile/notifications/` - Get notification preferences
+  * `PUT /api/profile/notifications/` - Save notification preferences
+  * `GET /api/profile/privacy/` - Get privacy toggles, blocked list, and active devices
+  * `PUT /api/profile/privacy/` - Toggle discoverability
+  * `POST /api/profile/privacy/block/` - Block a user
+  * `POST /api/profile/privacy/unblock/` - Unblock a user
+  * `POST /api/profile/privacy/terminate-session/` - Log out a specific device session
 * **Groups**:
   * `GET /api/groups/` - List current user's groups
   * `POST /api/groups/` - Create a group
@@ -149,6 +164,7 @@ Build a simplified Splitwise-style web application that allows users to:
 * `/groups/:id/expense/new` - Form to create a new expense with splitting options
 * `/expenses/:id` - Expense details showing description, payer, splits, and the chat section
 * `/groups/:id/settle` - Settle up page to record a payment between group members
+* `/settings` - Account Settings screen showing profile, notification toggles, active sessions, and data controls
 
 ---
 

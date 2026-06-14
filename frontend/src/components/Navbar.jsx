@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { LogOut, User, Wallet } from 'lucide-react';
+import { LogOut, User, Wallet, Settings as SettingsIcon } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -27,10 +27,15 @@ const Navbar = () => {
           
           {user && (
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+              <Link
+                to="/settings"
+                className="flex items-center gap-2 text-gray-700 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-full border border-gray-100 transition"
+                title="View Account Settings"
+              >
                 <User className="h-4 w-4 text-emerald-600" />
                 <span className="text-sm font-medium">{user.username}</span>
-              </div>
+                <SettingsIcon className="h-3.5 w-3.5 text-gray-400 hover:text-emerald-600 transition" />
+              </Link>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 font-medium transition cursor-pointer"

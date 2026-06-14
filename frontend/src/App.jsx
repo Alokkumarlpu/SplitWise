@@ -9,6 +9,7 @@ import GroupDetails from './pages/GroupDetails';
 import AddExpense from './pages/AddExpense';
 import ExpenseDetails from './pages/ExpenseDetails';
 import SettleUp from './pages/SettleUp';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -57,6 +58,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SettleUp />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />
